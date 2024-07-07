@@ -68,6 +68,20 @@ socket.on('newBall', (data) => {
     }
 
     updatePosition(x, y){
+        this.sprite.moveTowards(x,y, 0.1)
+    }
+  }
+
+  class powercube{
+    constructor(){
+        this.sprite = new Sprite()
+        this.sprite.x = 0.5 * width
+        this.sprite.y = 0.5 * height
+        this.sprite.h = 50
+        this.sprite.w = 50
+    }
+
+    updatePosition(x, y){
         this.sprite.x = x;
         this.sprite.y = y;
     }
@@ -83,10 +97,19 @@ socket.on('newBall', (data) => {
   let didYouWin = false
   let paddles = []
   let myPaddle
+  let uTouchedBomb = false
+  let powercubes = []
+  let gravity; 
+let fireworks = [];
+let state = 0
+let colors = [];
   function setup(){
     new Canvas(1000, 600)
+    gravity = createVector(0, 0.1);
+  colors = ["#ff99c8","#fcf6bd","#d0f4de","#a9def9","#e4c1f9"];
     //ball = new paddle(0.2 * width)
     //balls[socket.id] = ball
+    
     if(amIFirst == true){
         myPaddle = new paddle(0.2 * width)
         paddles.push(myPaddle)
@@ -149,7 +172,7 @@ socket.on('newBall', (data) => {
   
   socket.on('powerUp', (data) => {
     if (data) {
-      myPaddle.h = 100
+      uTouchedBomb = true;
     }
   })
   
@@ -216,12 +239,24 @@ socket.on('otherPlayerPosition', (data) => {
         
       }else if(id == 'powercube'){
         let powercubeData = positions['powercube']
-        for(const powercube of powercubeData){
-          let powercubePosX = powercube.x * width
-          let powercubePosY = powercube.y * height
-          fill(powercube.colour[0], powercube.colour[1], powercube.colour[2])
-          rect(powercubePosX, powercubePosY, powercube.w, powercube.h)
-          fill('white')
+        if(powercubeData.length > powercubes){
+          powercubes.push(new powercube)
+        }
+        for(var i=0;i < powercubeData.length - 1;i++){
+          powercube1 = powercubeData[i]
+          let powercubePosX = powercube1.x * width
+          let powercubePosY = powercube1.y * height
+          powercubes[i].updatePosition(powercubePosX, powercubePosY)
+          //fill(powercube.colour[0], powercube.colour[1], powercube.colour[2])
+          //rect(powercubePosX, powercubePosY, powercube.w, powercube.h)
+          //fill('white')
+          if(paddles[0].sprite.collides(powercubes[i].sprite) || paddles[1].sprite.collides(powercubes[i].sprite)){
+            socket.emit('hit powercube', {
+              hit: true,
+              room: currentRoomCode,
+              firstPlayer: amIFirst
+            })
+          }
         }
       }else{
         const position = positions[id]
@@ -254,6 +289,17 @@ socket.on('otherPlayerPosition', (data) => {
       textAlign(CENTER)
       textSize(32)
       text('YOU WON!', width/2, height/2)
+      if (random(1) < 0.1) {
+        fireworks.push(new Firework(random(width), height));
+      }
+      for (let i=fireworks.length-1; i>=0; i--) {
+        fireworks[i].update();
+        fireworks[i].display();
+        
+        if (fireworks[i].done) {
+          fireworks.splice(i, 1);
+        }
+      }
       //noLoop()
     }else if(endgame == true && didYouWin == false){
       textAlign(CENTER)
@@ -262,9 +308,7 @@ socket.on('otherPlayerPosition', (data) => {
       if(shake){
         translate(random(-5,5),random(-5,5));
       }
-      if(frameCount % 300 == 0){
-        shake = false
-      }
+      
       //noLoop()
     }
     move()

@@ -12,6 +12,8 @@ const width = 1000
 const height = 600
 let rooms = []
 let collisions = []
+let hitPowercube = false
+let whoGotHit = 500
 app.use(express.static(__dirname + "/public"));
 
 app.get("/", (req, res) => {
@@ -67,9 +69,11 @@ class ball{
     this.x = 0.5
     this.y = 0.5
     this.diameter = 20
+    this.xDirection = Math.round((Math.random() - 0.5) * 5)
+    this.yDirection = Math.round((Math.random() -0.5) * 3) 
     this.velocity = {
-      x: (Math.random() - 0.5) / 200,
-      y: (Math.random() - 0.5) / 500
+      x: 1 / 100,
+      y: 1 / 500
     }
     this.acceleration = {
       x: 0,
@@ -81,8 +85,8 @@ class ball{
   moveBall(){
     
     if(!isNaN(this.velocity.x) || !isNaN(this.velocity.y)){
-        this.x += this.velocity.x
-        this.y += this.velocity.y
+        this.x += (this.velocity.x * this.xDirection)
+        this.y += (this.velocity.y * this.yDirection)
     }else{
         this.velocity.x = (Math.random() - 0.5) / 100
         this.velocity.y = (Math.random() - 0.5) / 200
@@ -211,6 +215,21 @@ io.on("connection", (socket) => {
             }
         }
   })
+
+  socket.on('hit powercube', (data)=> {
+    if(data.hit){
+      for(let room of rooms){
+        if(room.id == data.room){
+          hitPowercube = true
+          if(data.firstPlayer == true){
+            whoGotHit = 0
+          }else{
+            whoGotHit = 1
+          }
+        }
+      }
+    }
+  })
 });
 
 function generateRandomRoomCode() {
@@ -254,10 +273,11 @@ for(let room of rooms){
     if(frameCount % 120 == 0 && Math.random() > 0.9){
       //every 120 frames, there is a 10% chance that a powercube will spawn
       noPowercubes++
-      powercubeInstance = new powercube()
+      //powercubeInstance = new powercube()
 
-      powercubes.push(powercubeInstance)
-      room.positions['powercube'] = powercubes
+     // powercubes.push(powercubeInstance)
+      //room.positions['powercube'] = powercubes
+      
     }
     //powercubes
     if(powercubes.length > 0){
@@ -266,17 +286,17 @@ for(let room of rooms){
       //let player1 = positions[playerIds[0]]
       //let player2 = positions[playerIds[1]]
         if(powercubes[i] == null){break;}
-      if(ballCollision(powercubes[i].x, powercubes[i].y, player1.x, player1.y, 20, player1.h) === true){
-        powercubes.splice(i, 1)
-        noPowercubes--
-        io.to(room.clients[0]).emit('powerUp', true)
-        player1.h = 100
+      if(hitPowercube === true){
+        //powercubes.splice(i, 1)
+        //noPowercubes--
+        //io.to(room.clients[0]).emit('powerUp', true)
+        io.emit('winner', [room.clients[whoGotHit], room.gameover, room.id])
         }
-      if(ballCollision(powercubes[i].x, powercubes[i].y, player2.x, player2.y, 20, player2.h) === true){
-        powercubes.splice(i, 1)
-        noPowercubes--
-        io.to(room.clients[1]).emit('powerUp', true)
-        player2.h = 100
+      if(hitPowercube === true){
+        //powercubes.splice(i, 1)
+        //noPowercubes--
+        //io.to(room.clients[1]).emit('powerUp', true)
+        io.emit('winner', [room.clients[whoGotHit], room.gameover, room.id])
         }
       }
     }
@@ -303,7 +323,7 @@ for(let room of rooms){
     })
     room.positions['ball'].x = 0.5
     room.positions['ball'].y = 0.5
-    room.positions['ball'].velocity.x = (Math.random() - 0.5) /200
+    room.positions['ball'].velocity.x = (Math.random() - 0.5) /100
     room.positions['ball'].velocity.y = (Math.random() - 0.5) /500
     //console.log(room.id)
   }
@@ -320,7 +340,7 @@ for(let room of rooms){
     })
     room.positions['ball'].x = 0.5
     room.positions['ball'].y = 0.5
-    room.positions['ball'].velocity.x = (Math.random() - 0.5) /200
+    room.positions['ball'].velocity.x = (Math.random() - 0.5) /100
     room.positions['ball'].velocity.y = (Math.random() - 0.5) /500
     //console.log(room.id)
   }
